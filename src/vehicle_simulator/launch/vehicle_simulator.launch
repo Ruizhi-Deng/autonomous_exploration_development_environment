@@ -159,6 +159,15 @@ def generate_launch_description():
     ]
   )
 
+  delayed_spawn_entities = TimerAction(
+    period=3.0,
+    actions=[
+      spawn_lidar,
+      spawn_robot,
+      spawn_camera
+    ]
+  )
+
   ld = LaunchDescription()
 
   # Add the actions
@@ -193,9 +202,7 @@ def generate_launch_description():
 
   ld.add_action(start_gazebo)
   ld.add_action(start_lidar_state_publisher)
-  ld.add_action(spawn_lidar)
-  ld.add_action(spawn_robot)
-  ld.add_action(spawn_camera)
+  ld.add_action(delayed_spawn_entities)
   ld.add_action(delayed_start_vehicle_simulator)
 
   return ld
