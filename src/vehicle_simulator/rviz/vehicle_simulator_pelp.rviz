@@ -15,16 +15,35 @@ Panels:
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
+      - /Current View1/Focal Point1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz_common/Time
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: FreePaths
+    SyncSource: Trajectory
 Visualization Manager:
   Class: ""
   Displays:
+    - Alpha: 0.5
+      Cell Size: 0.20000000298023224
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: false
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 1000
+      Reference Frame: <Fixed Frame>
+      Value: false
     - Class: rviz_default_plugins/Axes
       Enabled: true
       Length: 0.75
@@ -58,7 +77,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 0
@@ -79,7 +98,7 @@ Visualization Manager:
         Value: /registered_scan
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 0.20000000298023224
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -262,7 +281,7 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz_default_plugins/Polygon
       Color: 0; 255; 0
-      Enabled: true
+      Enabled: false
       Name: Boundary
       Topic:
         Depth: 5
@@ -271,7 +290,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /navigation_boundary
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -284,7 +303,7 @@ Visualization Manager:
       Color: 255; 25; 0
       Color Transformer: ""
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -305,8 +324,8 @@ Visualization Manager:
         Value: /added_obstacles
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
-    - Alpha: 0.10000000149011612
+      Value: false
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -328,7 +347,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 2
-      Size (m): 0.009999999776482582
+      Size (m): 0.10000000149011612
       Style: Points
       Topic:
         Depth: 5
@@ -389,7 +408,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 160.25790405273438
+      Max Intensity: 196.13180541992188
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: Trajectory
@@ -407,6 +426,27 @@ Visualization Manager:
         Value: /trajectory
       Use Fixed Frame: true
       Use rainbow: true
+      Value: true
+    - Alpha: 0.699999988079071
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: true
+      Enabled: true
+      Name: GroundTruth
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /ground_truth
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /ground_truth_updates
+      Use Timestamp: false
       Value: true
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
@@ -471,7 +511,7 @@ Visualization Manager:
       Name: VisibleFrontiers
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 4
       Size (m): 0.4000000059604645
       Style: Spheres
       Topic:
@@ -574,21 +614,6 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /av1/planned_path
       Value: true
-    - Alpha: 1
-      Class: rviz_default_plugins/PointStamped
-      Color: 170; 0; 0
-      Enabled: true
-      History Length: 1
-      Name: PointStamped
-      Radius: 0.20000000298023224
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /way_point
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -611,16 +636,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.846959114074707
+      Distance: 49.3815803527832
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.4656040668487549
-        Y: -0.01129273883998394
-        Z: 0.45462995767593384
+        X: -0.46488726139068604
+        Y: 0.3509131371974945
+        Z: -0.00046524833305738866
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -629,7 +654,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: vehicle
       Value: Orbit (rviz)
-      Yaw: 3.1604104042053223
+      Yaw: 3.1404097080230713
     Saved: ~
 Window Geometry:
   Displays:
@@ -639,7 +664,7 @@ Window Geometry:
   Hide Right Dock: false
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001b6000004b7fc020000000bfb0000001200530065006c0065006300740069006f006e000000003d000001b80000008e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000056000004b70000013600fffffffb0000000a0049006d006100670065020000024f000001e30000019a000000fefb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001400430061006d0065007200610049006e006900740100000474000000160000000000000000fb0000000a0049006d00610067006503000004000000035600000199000000fd000000010000010f000003a7fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000003a70000010400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073d0000003efc0100000002fb0000000800540069006d006500000000000000073d0000046100fffffffb0000000800540069006d0065010000000000000450000000000000000000000835000004b700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001b6000004b7fc020000000bfb0000001200530065006c0065006300740069006f006e000000003d000001b80000008e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000056000004b70000013600fffffffb0000000a0049006d006100670065020000024f000001e30000019a000000fefb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001400430061006d0065007200610049006e006900740100000474000000160000000000000000fb0000000a0049006d00610067006503000004000000035600000199000000fd0000000100000134000004b7fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000056000004b70000010400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073d0000003efc0100000002fb0000000800540069006d006500000000000000073d0000046100fffffffb0000000800540069006d0065010000000000000450000000000000000000000835000004b700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

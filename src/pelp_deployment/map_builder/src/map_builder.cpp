@@ -10,25 +10,34 @@ MapBuilder::MapBuilder()
   this->declare_parameter<double>("size_x", 0.0);
   this->declare_parameter<double>("size_y", 0.0);
   this->declare_parameter<double>("height", 0.0);
+  this->declare_parameter<double>("min_rel_z", -0.1);
+  this->declare_parameter<double>("max_rel_z", 1.0);
   this->declare_parameter<double>("num_rays", 0.0);
   this->declare_parameter<double>("max_range", 0.0);
   resolution = this->get_parameter("resolution").as_double();
   grid_size_x = this->get_parameter("size_x").as_double();
   grid_size_y = this->get_parameter("size_y").as_double();
   height = this->get_parameter("height").as_double();
+  min_rel_z = this->get_parameter("min_rel_z").as_double();
+  max_rel_z = this->get_parameter("max_rel_z").as_double();
   num_rays = this->get_parameter("num_rays").as_double();
   max_range = this->get_parameter("max_range").as_double();
   origin_x = -(grid_size_x * resolution) / 2.0f;
   origin_y = -(grid_size_y * resolution) / 2.0f;
+  this->declare_parameter<double>("map_org_x", origin_x);
+  this->declare_parameter<double>("map_org_y", origin_y);
+  origin_x = this->get_parameter("map_org_x").as_double();
+  origin_y = this->get_parameter("map_org_y").as_double();
 
   // initialize global pointcloud subscriber
-  global_pointcloud_subscriber =
-      this->create_subscription<sensor_msgs::msg::PointCloud2>(
-          "/global_pointcloud", 1,
-          std::bind(&MapBuilder::globalCloudCallback, this,
-                    std::placeholders::_1));
+  global_pointcloud_subscriber = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+      "overall_map", 1,
+      std::bind(&MapBuilder::globalCloudCallback, this, std::placeholders::_1));
 
+  // stores overall pointcloud
   cloud = std::make_shared<PclCloud>();
+
+  // stores visible pointcloud (history + current)
   visible_cloud = std::make_shared<PclCloud>();
 
   // initialize octree
@@ -40,9 +49,10 @@ MapBuilder::MapBuilder()
 
   // initialize odom and local pointcloud
   vehicles = {"av1"};
-  for (auto &name : vehicles) {
-    std::string local_pointcloud_topic = "/" + name + "/local_pointcloud";
-    std::string odom_topic = "/" + name + "/odom";
+  for (auto& name : vehicles) {
+    std::string local_pointcloud_topic = "registered_scan";
+    std::string odom_topic = "state_estimation";
+    
     odom_subs[name] = this->create_subscription<nav_msgs::msg::Odometry>(
         odom_topic, 10, [this, name](nav_msgs::msg::Odometry::SharedPtr msg) {
           odomCallback(msg, name);
@@ -50,8 +60,7 @@ MapBuilder::MapBuilder()
     local_pointcloud_subscribers[name] =
         this->create_subscription<sensor_msgs::msg::PointCloud2>(
             local_pointcloud_topic, 10,
-            std::bind(&MapBuilder::localCloudCallback, this,
-                      std::placeholders::_1));
+            std::bind(&MapBuilder::localCloudCallback, this, std::placeholders::_1));
   }
 
   // create timer at 0.5 Hz for better performance
@@ -64,11 +73,9 @@ MapBuilder::MapBuilder()
   visible_publisher =
       this->create_publisher<nav_msgs::msg::OccupancyGrid>("/visible_map", 10);
   ground_truth_octomap_publisher =
-      this->create_publisher<octomap_msgs::msg::Octomap>(
-          "/ground_truth_octomap", 10);
+      this->create_publisher<octomap_msgs::msg::Octomap>("/ground_truth_octomap", 10);
   visible_octomap_publisher =
-      this->create_publisher<octomap_msgs::msg::Octomap>("/visible_octomap",
-                                                         10);
+      this->create_publisher<octomap_msgs::msg::Octomap>("/visible_octomap", 10);
 
   for (int i = 0; i < num_rays; ++i) {
     double ang = 2.0 * M_PI * i / num_rays;
@@ -87,8 +94,12 @@ void MapBuilder::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg,
   double ry = msg->pose.pose.position.y;
 
   // if map is not processed, return
-  if (!map_processed)
-    return;
+  if (!map_processed) return;
+
+  if (!ground_truth_initialized ||
+      std::abs(position.z() - last_ground_truth_robot_z) > resolution) {
+    rebuildGroundTruthFromRobotHeight(position.z());
+  }
 
   // simulate lidar with optimized ray casting
   const double step_size = 1.0 * resolution; // Larger step size for performance
@@ -107,8 +118,7 @@ void MapBuilder::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg,
       int gx = static_cast<int>((ix - origin_x) / resolution);
       int gy = static_cast<int>((iy - origin_y) / resolution);
 
-      if (gx < 0 || gx >= grid_size_x || gy < 0 || gy >= grid_size_y)
-        break;
+      if (gx < 0 || gx >= grid_size_x || gy < 0 || gy >= grid_size_y) break;
 
       int idx = gy * grid_size_x + gx;
 
@@ -140,8 +150,30 @@ void MapBuilder::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg,
   visible_publisher->publish(visible);
 }
 
-void MapBuilder::globalCloudCallback(
-    const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+void MapBuilder::rebuildGroundTruthFromRobotHeight(double robot_z) {
+  std::fill(ground_truth.data.begin(), ground_truth.data.end(), -1);
+
+  const double min_z = robot_z + min_rel_z;
+  const double max_z = robot_z + max_rel_z;
+
+  for (const auto& pt : cloud->points) {
+    if (pt.z < min_z || pt.z > max_z) {
+      continue;
+    }
+
+    int xIdx = static_cast<int>((pt.x - origin_x) / resolution);
+    int yIdx = static_cast<int>((pt.y - origin_y) / resolution);
+    if (xIdx >= 0 && xIdx < grid_size_x && yIdx >= 0 && yIdx < grid_size_y) {
+      int idx = yIdx * grid_size_x + xIdx;
+      ground_truth.data[idx] = 100;
+    }
+  }
+
+  ground_truth_initialized = true;
+  last_ground_truth_robot_z = robot_z;
+}
+
+void MapBuilder::globalCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   if (map_processed) {
     return;
   }
@@ -154,7 +186,7 @@ void MapBuilder::globalCloudCallback(
   pcl::fromROSMsg(*msg, *cloud);
 
   // modify octomap
-  for (auto &pt : cloud->points) {
+  for (auto& pt : cloud->points) {
     if (pt.z < 2.0) {
       octo_cloud.push_back(pt.x, pt.y, pt.z);
     }
@@ -168,39 +200,6 @@ void MapBuilder::globalCloudCallback(
   // generate octomap msg
   octomap_msgs::binaryMapToMsg(*octree_map, octomap_msg);
 
-  // generate map of ground truth
-  for (auto it = octree_map->begin_leafs(), end = octree_map->end_leafs();
-       it != end; ++it) {
-    if (octree_map->isNodeOccupied(*it)) {
-      double z = it.getZ();
-      if (z < height * resolution - resolution ||
-          z > height * resolution + resolution)
-        continue;
-
-      int xIdx = (it.getX() - origin_x) / resolution;
-      int yIdx = (it.getY() - origin_y) / resolution;
-      if (xIdx >= 0 && xIdx < (int)grid_size_x && yIdx >= 0 &&
-          yIdx < (int)grid_size_y) {
-        // Mark current cell
-        int idx = yIdx * grid_size_x + xIdx;
-        ground_truth.data[idx] = 100;
-
-        // Inflate only to 4 adjacent cells (no diagonals)
-        int adjacent[][2] = {{1, 0}, {-1, 0},  {0, 1},  {0, -1},
-                             {1, 1}, {-1, -1}, {1, -1}, {-1, 1}};
-        for (auto &offset : adjacent) {
-          int x_inflat = xIdx + offset[0];
-          int y_inflat = yIdx + offset[1];
-          if (x_inflat >= 0 && x_inflat < (int)grid_size_x && y_inflat >= 0 &&
-              y_inflat < (int)grid_size_y) {
-            int idx_flat = y_inflat * grid_size_x + x_inflat;
-            ground_truth.data[idx_flat] = 100;
-          }
-        }
-      }
-    }
-  }
-
   ready_to_publish = true;
 }
 
@@ -211,7 +210,7 @@ void MapBuilder::timerCallback() {
 
   // set header
   ground_truth.header.stamp = this->get_clock()->now(); // current ROS time
-  ground_truth.header.frame_id = "map"; // or whatever frame you use
+  ground_truth.header.frame_id = "map";                 // or whatever frame you use
 
   ground_truth.info.resolution = resolution;
   ground_truth.info.width = static_cast<uint32_t>(grid_size_x);
@@ -233,7 +232,7 @@ void MapBuilder::timerCallback() {
   static int last_point_count = 0;
   if ((int)visible_cloud->size() > last_point_count + 500) {
     visible_octo_cloud.clear();
-    for (auto &pt : visible_cloud->points) {
+    for (auto& pt : visible_cloud->points) {
       if (pt.z < 2.0) {
         visible_octo_cloud.push_back(pt.x, pt.y, pt.z);
       }
@@ -253,8 +252,7 @@ void MapBuilder::timerCallback() {
   }
 }
 
-void MapBuilder::localCloudCallback(
-    const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+void MapBuilder::localCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   if (!msg) {
     return;
   }
@@ -278,8 +276,7 @@ void MapBuilder::localCloudCallback(
     sor.setInputCloud(visible_cloud);
     sor.setLeafSize((float)(resolution / 5.0f), (float)(resolution / 5.0f),
                     (float)(resolution / 5.0f));
-    pcl::PointCloud<PclPoint>::Ptr cloud_filtered(
-        new pcl::PointCloud<PclPoint>());
+    pcl::PointCloud<PclPoint>::Ptr cloud_filtered(new pcl::PointCloud<PclPoint>());
     sor.filter(*cloud_filtered);
 
     // update visible cloud

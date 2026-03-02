@@ -50,6 +50,7 @@ private:
   std::unordered_map<std::string, Eigen::Vector3f> current_positions;
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg,
                     const std::string name);
+  void rebuildGroundTruthFromRobotHeight(double robot_z);
 
   // publish ground truth and map of robot respectlvely
   nav_msgs::msg::OccupancyGrid ground_truth;
@@ -76,6 +77,10 @@ private:
   double resolution, origin_x, origin_y;
   int grid_size_x, grid_size_y;
   double height;
+  double min_rel_z;
+  double max_rel_z;
+  bool ground_truth_initialized = false;
+  double last_ground_truth_robot_z = 0.0;
   // params for ray simulation
   double num_rays, max_range;
 

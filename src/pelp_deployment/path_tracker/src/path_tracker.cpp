@@ -4,7 +4,7 @@ PathTracker::PathTracker() : Node("path_tracker_node"), odom_received(false) {
   // initialize name
   this->declare_parameter<std::string>("robot_name", "av1");
   robot = this->get_parameter("robot_name").as_string();
-  
+
   // subscribe to odom
   declare_parameter("odom_topic", "/" + robot + "/odom");
   std::string odom_topic = this->get_parameter("odom_topic").as_string();
@@ -25,8 +25,13 @@ PathTracker::PathTracker() : Node("path_tracker_node"), odom_received(false) {
 
   // publish cmd_vel
   std::string cmd_vel_topic = "/" + robot + "/cmd_vel";
+  std::string cmd_vel_stamped_topic = this->declare_parameter<std::string>(
+      "cmd_vel_stamped_topic", "/" + robot + "/cmd_vel_stamped");
+  cmd_vel_stamped_topic = this->get_parameter("cmd_vel_stamped_topic").as_string();
   cmd_vel_publisher =
       this->create_publisher<geometry_msgs::msg::Twist>(cmd_vel_topic, 10);
+  cmd_vel_stamped_publisher =
+      this->create_publisher<geometry_msgs::msg::TwistStamped>(cmd_vel_stamped_topic, 10);
 
   // publish waypoint
   std::string waypoint_topic =
@@ -126,6 +131,11 @@ void PathTracker::send_cmd_vel(double v, double w) {
   target_velocity.linear.x = v;
   target_velocity.angular.z = w;
   cmd_vel_publisher->publish(target_velocity);
+  geometry_msgs::msg::TwistStamped target_velocity_stamped;
+  target_velocity_stamped.header.stamp = this->now();
+  target_velocity_stamped.header.frame_id = "vehicle";
+  target_velocity_stamped.twist = target_velocity;
+  cmd_vel_stamped_publisher->publish(target_velocity_stamped);
   // RCLCPP_INFO(this->get_logger(), "Published cmd_vel: v=%.2f, w=%.2f", v, w);
 }
 
@@ -176,10 +186,14 @@ void PathTracker::odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg) {
   }
 
   // RCLCPP_INFO_STREAM(this->get_logger(),
-  //                    "Current index: " << current_index << ", Target index: " << target_idx
+  //                    "Current index: " << current_index << ", Target index: " <<
+  //                    target_idx
   //                                     << ", Distance to target: "
-  //                                     << sqrt(pow(path.poses[target_idx].pose.position.x - current_pose.position.x, 2) +
-  //                                             pow(path.poses[target_idx].pose.position.y - current_pose.position.y, 2)));
+  //                                     <<
+  //                                     sqrt(pow(path.poses[target_idx].pose.position.x -
+  //                                     current_pose.position.x, 2) +
+  //                                             pow(path.poses[target_idx].pose.position.y
+  //                                             - current_pose.position.y, 2)));
 
   // 2.5 Publish waypoint
   geometry_msgs::msg::PointStamped waypoint_msg;

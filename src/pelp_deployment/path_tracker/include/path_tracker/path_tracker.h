@@ -2,6 +2,7 @@
 #define PATH_TRACKER_H
 
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -19,6 +20,7 @@ using OdomSubscriberPtr = rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedP
 using PathSubscriberPtr = rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr;
 using StringSubscriberPtr = rclcpp::Subscription<std_msgs::msg::String>::SharedPtr;
 using TwistPublisherPtr = rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr;
+using TwistStampedPublisherPtr = rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr;
 using MarkerPublisherPtr = rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr;
 using WaypointPublisherPtr =
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr;
@@ -51,6 +53,7 @@ private:
 
   // publish twist (cmd_vel)
   TwistPublisherPtr cmd_vel_publisher;
+  TwistStampedPublisherPtr cmd_vel_stamped_publisher;
   void send_cmd_vel(double v, double w);
 
   // publish waypoint

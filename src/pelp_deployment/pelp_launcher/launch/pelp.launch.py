@@ -31,6 +31,30 @@ def generate_launch_description():
         }.items(),
     )
 
+    map_resolution = 0.4
+
+    start_map_builder = Node(
+        package="map_builder",
+        executable="map_builder_node",
+        name="map_builder",
+        output="screen",
+        parameters=[
+            {
+                "resolution": map_resolution,
+                "size_x": 135 / map_resolution + 1.0,  # cells
+                "size_y": 110 / map_resolution + 1.0,  # cells
+                # left bottom corner as origin
+                "map_org_x": -5.0 + map_resolution / 2,  # m # shouled have resolution/2 offset 
+                "map_org_y": -35.0 + map_resolution / 2,  # m # shouled have resolution/2 offset 
+                "min_rel_z": -0.6,  # m
+                "max_rel_z": 1.5,  # m
+                "num_rays": 360.0,
+                "max_range": 10 / 0.4, # cells
+                "height": 0.75/map_resolution, # cells, should be robot z height
+            }
+        ],
+    )
+
     start_path_selector = Node(
         package="path_selector",
         executable="path_selector_fsm_node",
@@ -54,15 +78,15 @@ def generate_launch_description():
         parameters=[
             {
                 "odom_topic": "state_estimation",
-                # "cmd_vel_topic": "cmd_vel",
+                "cmd_vel_stamped_topic": "cmd_vel",
                 "waypoint_topic": "way_point",
                 "tolerance": 0.15,
-                "lookahead_distance": 0.5,
-                # "max_linear_speed": 2.0,
-                # "max_angular_speed": 3.0,
-                # "kp_linear": 3.0,
-                # "kp_angular": 1.5,
-                # "kp_angular_small": 0.75,
+                "lookahead_distance": 0.35,
+                "max_linear_velocity": 3.0,
+                "max_angular_velocity": 10.0,
+                "kp_linear": 2.5,
+                "kp_angular": 4.0,
+                "kp_angular_small": 2.0,
             }
         ],
     )
@@ -120,7 +144,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            start_pointcloud_mapping,
+            # start_pointcloud_mapping,
+            start_map_builder,
             start_path_selector,
             start_path_tracker,
             start_map_predictor,
