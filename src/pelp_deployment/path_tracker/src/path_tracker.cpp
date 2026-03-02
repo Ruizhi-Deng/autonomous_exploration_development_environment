@@ -1,5 +1,7 @@
 #include "../include/path_tracker/path_tracker.h"
 
+// BUG: 还是有可能冲出去墙; 考虑用terrain做防碰撞
+
 PathTracker::PathTracker() : Node("path_tracker_node"), odom_received(false) {
   // initialize name
   this->declare_parameter<std::string>("robot_name", "av1");
