@@ -15,10 +15,16 @@ In cv2, we have
 
 class MapPredictor:
     def __init__(self, model_path, IF_UNCERTAIN) -> None:
-        self.device = "cuda"
+        self.device = torch.device("cpu")
+        try:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+        except Exception as e:
+            print(f"[MapPredictor] CUDA probe failed, fallback to CPU: {e}")
+
         self.origin_map_size = 128  # 128 * 128
         self.net = FPUNet(in_channels=3, n_classes=3, feature_scale=2).to(self.device)
-        state_dict = torch.load(model_path, weights_only=True)
+        state_dict = torch.load(model_path, map_location=self.device, weights_only=True)
         self.net.load_state_dict(state_dict)
         self.last_predicted_map = None
         self.floor_plan = None
@@ -72,7 +78,8 @@ class MapPredictor:
                     print("  [WARNING] Logits are very high (>10), Softmax will be ~1.0 everywhere.")
             
             # 4. Manually clear cache
-            torch.cuda.empty_cache()
+            if self.device.type == "cuda":
+                torch.cuda.empty_cache()
 
             # 5. Result fusion
             batch_labels = self.probability2Label(predicted_outputs).numpy()

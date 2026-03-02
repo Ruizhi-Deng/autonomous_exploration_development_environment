@@ -33,8 +33,8 @@ PathSelector::PathSelector()
       std::bind(&PathSelector::globalPathCallback, this, std::placeholders::_1));
 
   // subscribe to odom
-  this->declare_parameter<std::string>("odom_msg", "state_estimation");
-  std::string odom_topic = this->get_parameter("robot_name").as_string();
+  this->declare_parameter<std::string>("odom_msg", "/av1/odom");
+  std::string odom_topic = this->get_parameter("odom_msg").as_string();
   odom_subscriber = this->create_subscription<nav_msgs::msg::Odometry>(
       odom_topic, 10,
       std::bind(&PathSelector::odomCallback, this, std::placeholders::_1));
@@ -65,11 +65,12 @@ PathSelector::PathSelector()
       this->create_publisher<nav_msgs::msg::Path>("/" + robot + "/solution_path", 10);
 
   // publish waypoint
-  std::string waypoint_topic =
-      declare_parameter<std::string>("waypoint_topic", "/way_point");
-  waypoint_topic = this->get_parameter("waypoint_topic").as_string();
-  waypoint_pub =
-      this->create_publisher<geometry_msgs::msg::PoseStamped>(waypoint_topic, 10);
+  // std::string waypoint_topic =
+  //     declare_parameter<std::string>("waypoint_topic", "/" + robot + "/way_point");
+  // waypoint_topic = this->get_parameter("waypoint_topic").as_string();
+  // waypoint_topic = this->get_parameter("waypoint_topic").as_string();
+  // waypoint_pub =
+  //     this->create_publisher<geometry_msgs::msg::PointStamped>(waypoint_topic, 10);
 
   // this->declare_parameter<double>("height", 0.0);
   // height = this->get_parameter("height").as_double();
@@ -361,7 +362,12 @@ void PathSelector::executeExePathOnce() {
 
     // publish the constructed path
     path_pub->publish(output_path);
-    waypoint_pub->publish(output_path.poses.back());
+    // if (!output_path.poses.empty()) {
+    //   geometry_msgs::msg::PointStamped waypoint_msg;
+    //   waypoint_msg.header = output_path.header;
+    //   waypoint_msg.point = output_path.poses.back().pose.position;
+    //   waypoint_pub->publish(waypoint_msg);
+    // }
 
     DEBUG_LOG("Published A* path from (%d, %d) to (%d, %d) with %zu points", robot_x,
               robot_y, goal_x, goal_y, a_star_path.size());

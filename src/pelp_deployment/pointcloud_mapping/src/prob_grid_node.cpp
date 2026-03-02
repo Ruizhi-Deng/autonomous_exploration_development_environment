@@ -38,15 +38,26 @@ public:
     org_exp_y = this->declare_parameter<double>("org_exp_y", 0.0);
     min_rel_z_ = this->declare_parameter<double>("min_rel_z", -0.1);
     max_rel_z_ = this->declare_parameter<double>("max_rel_z", 1.0);
+    outlier_radius_search_ =
+      this->declare_parameter<double>("outlier_radius_search", 0.75);
+    outlier_min_neighbors_ =
+      this->declare_parameter<int>("outlier_min_neighbors", 3);
     sensor_range_ = this->declare_parameter<double>("sensor_range", 10.0);
+    observed_range_limit_ =
+      this->declare_parameter<double>("observed_range_limit", 6.0);
     dilation_radius_ = this->declare_parameter<double>("dilation_radius", 0.5);
     fov_rays_ = this->declare_parameter<int>("fov_deg", 80);
 
+    std::string scan_topic =
+      this->declare_parameter<std::string>("scan_topic", "/registered_scan");
+    std::string odom_topic =
+      this->declare_parameter<std::string>("odom_topic", "/state_estimation");
+
     pointcloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-        "/sensor_scan", rclcpp::SensorDataQoS(),
+        scan_topic, rclcpp::SensorDataQoS(),
         std::bind(&GridRayTracer::cloudCallback, this, std::placeholders::_1));
     odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        "/state_estimation_at_scan", rclcpp::QoS(50).best_effort(),
+        odom_topic, rclcpp::QoS(50).best_effort(),
         std::bind(&GridRayTracer::odomCallback, this, std::placeholders::_1));
 
     gridmap_pub_ =
@@ -125,8 +136,8 @@ private:
         new pcl::PointCloud<pcl::PointXYZ>());
     pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
     outrem.setInputCloud(pcl_cloud_z_filtered.makeShared());
-    outrem.setRadiusSearch(0.75);
-    outrem.setMinNeighborsInRadius(3);
+    outrem.setRadiusSearch(outlier_radius_search_);
+    outrem.setMinNeighborsInRadius(outlier_min_neighbors_);
     outrem.filter(*cloud_filtered);
 
     insertPointsToGrid(*cloud_filtered, robot_x_, robot_y_);
@@ -134,7 +145,7 @@ private:
     publishRayEndpoints(robot_x_, robot_y_, robot_theta_, raycloud_pub_);
 
     std::vector<bool> observed_mask_(width_ * height_, false);
-    double range_limit = 6.0;
+    double range_limit = observed_range_limit_;
 
     int center_x =
         static_cast<int>((robot_x_ - grid_.info.origin.position.x) / resolution_);
@@ -368,7 +379,10 @@ private:
   double org_exp_y{};
   double min_rel_z_{};
   double max_rel_z_{};
+  double outlier_radius_search_{};
+  int outlier_min_neighbors_{};
   double sensor_range_{};
+  double observed_range_limit_{};
   double robot_x_{};
   double robot_y_{};
   double robot_z_{};

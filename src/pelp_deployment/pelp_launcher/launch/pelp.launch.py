@@ -17,13 +17,17 @@ def generate_launch_description():
     start_pointcloud_mapping = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(pointcloud_mapping_launch),
         launch_arguments={
-            "map_width": "70.125",
-            "map_height": "60.125",
+            "map_width": "135.125",
+            "map_height": "110.125",
             "map_org_x": "-5.0",  # left bottom corner as origin
-            "map_org_y": "-11.5",
+            "map_org_y": "-35.5",
             "exp_map_resolution": "0.125",
-            "dilation_radius": "0.3",
+            "dilation_radius": "0.125",
             "fov_deg": "360",
+            "sensor_range": "15.0",
+            "observed_range_limit": "10.0",
+            "min_rel_z": "-0.6",
+            "max_rel_z": "1.5",
         }.items(),
     )
 
@@ -34,8 +38,31 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
-                "waypoint_tolerance": 0.5,
+                "waypoint_tolerance": 1.0,
                 "direction_change_penalty": 1.0,
+                "odom_msg": "state_estimation",
+                # "waypoint_topic": "way_point",
+            }
+        ],
+    )
+
+    start_path_tracker = Node(
+        package="path_tracker",
+        executable="path_tracker_node",
+        name="path_tracker_node",
+        output="screen",
+        parameters=[
+            {
+                "odom_topic": "state_estimation",
+                # "cmd_vel_topic": "cmd_vel",
+                "waypoint_topic": "way_point",
+                "tolerance": 0.15,
+                "lookahead_distance": 0.5,
+                # "max_linear_speed": 2.0,
+                # "max_angular_speed": 3.0,
+                # "kp_linear": 3.0,
+                # "kp_angular": 1.5,
+                # "kp_angular_small": 0.75,
             }
         ],
     )
@@ -45,7 +72,13 @@ def generate_launch_description():
         executable="grid_predictor_node",
         name="grid_predictor",
         output="screen",
-        parameters=[{"robot_name": "av1", "model_path": "model/fpunet.pth"}],
+        parameters=[
+            {
+                "robot_name": "av1",
+                "model_path": "model/fpunet.pth",
+                "prediction_cycle": 1.5,
+            }
+        ],
     )
 
     start_pelp_local = Node(
@@ -55,6 +88,7 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
+                "odom_topic": "state_estimation",
                 "max_range_of_local_frontiers": 120.0,
                 "replan_path_length_threshold": 1.0,
                 "time_threshold": 1.5,
@@ -76,13 +110,19 @@ def generate_launch_description():
         executable="global_planner_node",
         name="global_planner",
         output="screen",
-        parameters=[{"global_range": 6.0}],
+        parameters=[
+            {
+                "global_range": 6.0,
+                "odom_topic": "state_estimation",
+            }
+        ],
     )
 
     return LaunchDescription(
         [
             start_pointcloud_mapping,
-            # start_path_selector,
+            start_path_selector,
+            start_path_tracker,
             start_map_predictor,
             start_pelp_local,
             start_pelp_global,

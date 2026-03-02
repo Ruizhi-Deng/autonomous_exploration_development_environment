@@ -49,6 +49,42 @@ SEV_ANY_RE = re.compile(r"\[(DEBUG|INFO|WARN|ERROR|FATAL)\]")
 NODE_RE = re.compile(r"\[([^\]]+)\]:\s*(.*)")
 
 
+def _forward_signal_to_child_group(proc: subprocess.Popen, sig: int) -> None:
+    """Best-effort forward of signal to the child's process group."""
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(os.getpgid(proc.pid), sig)
+    except Exception:
+        pass
+
+
+def _graceful_stop_child(proc: subprocess.Popen) -> None:
+    """Stop child process group with escalation: SIGINT -> SIGTERM -> SIGKILL."""
+    if proc.poll() is not None:
+        return
+
+    _forward_signal_to_child_group(proc, signal.SIGINT)
+    try:
+        proc.wait(timeout=5)
+        return
+    except Exception:
+        pass
+
+    _forward_signal_to_child_group(proc, signal.SIGTERM)
+    try:
+        proc.wait(timeout=3)
+        return
+    except Exception:
+        pass
+
+    _forward_signal_to_child_group(proc, signal.SIGKILL)
+    try:
+        proc.wait(timeout=2)
+    except Exception:
+        pass
+
+
 def running_in_wsl() -> bool:
     """Return True when running inside Windows Subsystem for Linux."""
     if "WSL_INTEROP" in os.environ or "WSL_DISTRO_NAME" in os.environ:
@@ -153,10 +189,24 @@ def main():
 
     min_level = SEVERITY_ORDER[args.min_severity]
 
-    def _raise_keyboard_interrupt(signum, frame):
+    proc: Optional[subprocess.Popen] = None
+    interrupted = False
+    signal_count = 0
+
+    def _handle_signal(signum, frame):
+        nonlocal interrupted, proc, signal_count
+        signal_count += 1
+        interrupted = True
+        if proc is not None:
+            # 1st Ctrl+C: graceful stop request; repeated Ctrl+C: hard stop request.
+            if signal_count == 1:
+                _forward_signal_to_child_group(proc, signum)
+            else:
+                _forward_signal_to_child_group(proc, signal.SIGKILL)
         raise KeyboardInterrupt
 
-    signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
+    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
 
     # Validate the provided command: accept only ros2 launch invocations with a launch file
     raw_cmd = args.command.strip()
@@ -189,7 +239,7 @@ def main():
     if args.cleanup:
         cleanup_stale_runtime(plain=args.plain)
 
-    # Use shell=True to run the validated launch command
+    # Run command without an extra shell layer for more reliable signal handling.
     print(f"Running: {command_to_run}")
 
     launch_env = os.environ.copy()
@@ -198,15 +248,23 @@ def main():
         print(f"{ANSI['DIM']}[launcher] WSL detected: set FASTDDS_BUILTIN_TRANSPORTS=UDPv4 to avoid SHM lock issues.{ANSI['RESET']}" if not args.plain else "[launcher] WSL detected: set FASTDDS_BUILTIN_TRANSPORTS=UDPv4 to avoid SHM lock issues.")
 
     try:
-        proc = subprocess.Popen(command_to_run, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True, start_new_session=True, env=launch_env)
+        proc = subprocess.Popen(
+            shlex.split(command_to_run),
+            shell=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+            start_new_session=True,
+            env=launch_env,
+        )
     except Exception as e:
         print(f"Failed to start command: {e}", file=sys.stderr)
         sys.exit(2)
 
     prev_line = None
     repeat_count = 0
-    interrupted = False
-
     try:
         assert proc.stdout is not None
         for raw in proc.stdout:
@@ -256,32 +314,16 @@ def main():
         if repeat_count > 0:
             print(f"{ANSI['DIM']}... (repeated {repeat_count} times){ANSI['RESET']}" if not args.plain else f"... (repeated {repeat_count} times)")
 
-        if proc.poll() is None:
+        if proc is not None:
             try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-            except Exception:
-                pass
-
-            try:
-                proc.wait(timeout=5)
-            except Exception:
+                _graceful_stop_child(proc)
+            except KeyboardInterrupt:
+                # If user presses Ctrl+C again during teardown, force kill immediately.
+                _forward_signal_to_child_group(proc, signal.SIGKILL)
                 try:
-                    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    proc.wait(timeout=1)
                 except Exception:
                     pass
-
-                try:
-                    proc.wait(timeout=3)
-                except Exception:
-                    try:
-                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                    except Exception:
-                        pass
-
-                    try:
-                        proc.wait(timeout=2)
-                    except Exception:
-                        pass
 
         if interrupted:
             sys.exit(130)

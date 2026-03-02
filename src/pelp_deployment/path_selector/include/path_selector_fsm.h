@@ -9,6 +9,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "prob_msgs/msg/path_pose_array.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/bool.hpp"
 
@@ -41,7 +42,7 @@ using OccupancyGridSubscriberPtr =
     rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr;
 using ReplanPublisherPtr = rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr;
 using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
-using WaypointPublisherPtr = rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr;
+using WaypointPublisherPtr = rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr;
 
 struct Point2D
 {
