@@ -2,3 +2,7 @@
 	path = src/pelp_deployment/dev_HPP_PV_explore_predict
 	url = https://github.com/rap-lab-org/dev_HPP_PV_explore_predict.git
 	branch = main
+[submodule "src/dev_pelp"]
+	path = src/dev_pelp
+	url = https://github.com/tangjingfan/dev_pelp
+	branch = main
